@@ -40,8 +40,10 @@ The script uses only the standard library. It queries Overpass (overpass-api.de,
 
 - **Streets** (`street`): named highways from primary to residential, plus pedestrian streets. Ways that share a name are merged when they touch. A street is skipped if it is shorter than 150 m, or if it is nearly straight: every vertex lies within max(25 m, 6 % of its length) of the main axis.
 - **Squares** (`square`): `place=square`, named pedestrian areas, and highways named „Piața …” / „… tér”.
-- **Landmarks** (`landmark`): named churches, theatres, schools, hospitals, hotels, the stadium and the like. Plain boxes are dropped unless the building is well known. The citadel walls are assembled from the unnamed `barrier=city_wall` ways.
+- **Landmarks** (`landmark`): only buildings most locals could place. That means the famous ones (Cultural Palace, Prefecture, City Hall, the cathedrals, Vártemplom, the theatre, Teleki Library, the Great Synagogue, the stadium, Hotel Continental and others) and big Catholic, Orthodox, Reformed, Unitarian and Lutheran churches within 1.3 km of the centre. The citadel walls are assembled from the unnamed `barrier=city_wall` ways. Each landmark has a category (church, palace, hotel, …) that the round label shows.
 - **Block clusters** (`blocks`): `building=apartments` within 80 m of each other, at least 4 blocks per cluster. Big estates are split into clusters of at most 18 blocks. Each cluster is labelled by the nearest named street.
+
+Landmarks and block clusters also store the streets around them (`ctx`). Except in the hard game, the silhouette draws these faintly behind the shape: a footprint on its own is close to impossible to place, but a footprint next to a recognisable junction is fair.
 
 Difficulty is a score from 0 to 100, built from fame (road class or landmark status, 45 %), distance from Rózsák tere (30 %) and size (25 %). It is then cut into easy below 42, medium below 66, and hard.
 

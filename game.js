@@ -21,7 +21,7 @@
       best: (s) => `rekord ${s}`,
       start: 'Indulás',
       rulesTitle: 'Szabályok',
-      rule1: 'Öt kör. Minden körben egy valódi marosvásárhelyi hely alaprajzát látod: utcát, teret, épületet vagy tömbházcsoportot. Nincs név, nincs háttér, az észak felfelé van.',
+      rule1: 'Öt kör. Minden körben egy valódi marosvásárhelyi hely alaprajzát látod: utcát, teret, épületet vagy tömbházcsoportot. Nincs név, az észak felfelé van. Épületeknél halványan a környező utcák is látszanak — kivéve a Nehéz szinten.',
       rule2: 'A léptékvonal megmutatja a méretet — ez is árulkodó.',
       rule3: 'Koppints a térképre, ahová szerinted tartozik (a tűt utána is mozgathatod), majd nyomd meg a „Tipp!” gombot.',
       rule4: 'A pontszám a tipped és az alakzat legközelebbi pontja közötti távolságtól függ (utcánál a vonaltól, épületnél a körvonaltól). Segítséget kérhetsz: a városrész neve −500, a kezdőbetű további −1000 pont.',
@@ -41,6 +41,11 @@
       onShape: 'Telitalálat!',
       hintPenalty: (c) => `segítség: −${c}`,
       types: { street: 'Utca', square: 'Tér', landmark: 'Épület', blocks: 'Tömbházak' },
+      cats: {
+        church: 'Templom', synagogue: 'Zsinagóga', palace: 'Palota', theatre: 'Színház', townhall: 'Városháza',
+        hotel: 'Szálloda', library: 'Könyvtár', mall: 'Bevásárlóközpont', university: 'Egyetem', school: 'Iskola',
+        sport: 'Sportlétesítmény', fortress: 'Vár', building: 'Épület',
+      },
       endDaily: (d) => `Napi kihívás · ${d}`,
       endMode: (m) => `${m} játék`,
       newBest: 'Új rekord!',
@@ -61,7 +66,7 @@
       best: (s) => `record ${s}`,
       start: 'Start',
       rulesTitle: 'Reguli',
-      rule1: 'Cinci runde. În fiecare rundă vezi planul unui loc real din Târgu Mureș: o stradă, o piață, o clădire sau un grup de blocuri. Fără nume, fără fundal, nordul e în sus.',
+      rule1: 'Cinci runde. În fiecare rundă vezi planul unui loc real din Târgu Mureș: o stradă, o piață, o clădire sau un grup de blocuri. Fără nume, nordul e în sus. La clădiri se văd estompat și străzile din jur — mai puțin la nivelul Greu.',
       rule2: 'Bara de scară arată mărimea — și ea e un indiciu.',
       rule3: 'Atinge harta unde crezi că se află (poți muta acul după aceea), apoi apasă „Tipp!”.',
       rule4: 'Punctajul depinde de distanța dintre ac și cel mai apropiat punct al formei (la străzi față de linie, la clădiri față de contur). Indicii: numele cartierului −500, prima literă încă −1000 de puncte.',
@@ -81,6 +86,11 @@
       onShape: 'Nimerit!',
       hintPenalty: (c) => `indicii: −${c}`,
       types: { street: 'Stradă', square: 'Piață', landmark: 'Clădire', blocks: 'Blocuri' },
+      cats: {
+        church: 'Biserică', synagogue: 'Sinagogă', palace: 'Palat', theatre: 'Teatru', townhall: 'Primărie',
+        hotel: 'Hotel', library: 'Bibliotecă', mall: 'Centru comercial', university: 'Universitate', school: 'Școală',
+        sport: 'Bază sportivă', fortress: 'Cetate', building: 'Clădire',
+      },
       endDaily: (d) => `Provocarea zilei · ${d}`,
       endMode: (m) => `Joc ${m.toLowerCase()}`,
       newBest: 'Record nou!',
@@ -220,6 +230,20 @@
     return n;
   }
 
+  /** Context streets are stored delta-encoded (see build_puzzles.py); decode once. */
+  function decodeCtx(puzzle) {
+    if (!puzzle._ctx) {
+      const [s0, w0] = state.data.ctx_origin, u = state.data.ctx_unit;
+      puzzle._ctx = puzzle.ctx.map((flat) => {
+        const pts = [];
+        let a = 0, b = 0;
+        for (let i = 0; i < flat.length; i += 2) { a += flat[i]; b += flat[i + 1]; pts.push([s0 + a * u, w0 + b * u]); }
+        return pts;
+      });
+    }
+    return puzzle._ctx;
+  }
+
   /**
    * Draw a puzzle's shape into an <svg>, north up, auto-fitted.
    * opts: { width, height, pad, scaleBar, animate, stroke }
@@ -232,8 +256,11 @@
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
 
     const parts = puzzle.geom.map((part) => part.map(proj));
+    const ctx = o.context && puzzle.ctx && puzzle.cbox ? decodeCtx(puzzle).map((l) => l.map(proj)) : null;
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    for (const part of parts) for (const [x, y] of part) {
+    // With context the frame is the stored crop around the shape, not the shape itself.
+    const framePts = ctx ? [proj([puzzle.cbox[0], puzzle.cbox[1]]), proj([puzzle.cbox[2], puzzle.cbox[3]])] : parts.flat();
+    for (const [x, y] of framePts) {
       if (x < minX) minX = x; if (x > maxX) maxX = x;
       if (y < minY) minY = y; if (y > maxY) maxY = y;
     }
@@ -247,6 +274,15 @@
     const ty = (y) => (offY + (maxY - y) * s).toFixed(1);
 
     const strokeW = o.stroke || Math.max(4, Math.min(10, Math.min(W, H) / 32));
+    if (ctx) {
+      const id = 'clip' + Math.random().toString(36).slice(2, 8);
+      const cp = el('clipPath', { id }, el('defs', {}, svg));
+      el('rect', { x: 1, y: 1, width: W - 2, height: H - 2 }, cp);
+      const cg = el('g', { class: 'ctx' + (o.animate ? ' fade' : ''), 'clip-path': `url(#${id})` }, svg);
+      for (const l of ctx) {
+        el('path', { d: 'M' + l.map(([x, y]) => `${tx(x)},${ty(y)}`).join('L'), 'stroke-width': Math.max(2, strokeW * 0.45) }, cg);
+      }
+    }
     const g = el('g', {}, svg);
     if (puzzle.kind === 'area') {
       const d = parts.map((pt) => 'M' + pt.map(([x, y]) => `${tx(x)},${ty(y)}`).join('L') + 'Z').join('');
@@ -266,6 +302,7 @@
       const len = m * s;
       const x0 = 16, y0 = H - 18;
       const sb = el('g', { class: 'scalebar' }, svg);
+      el('rect', { class: 'sb-bg', x: x0 - 6, y: y0 - 14, width: len + 62, height: 22, rx: 3 }, sb);
       el('rect', { x: x0, y: y0 - 4, width: len / 2, height: 4, fill: 'var(--ink)' }, sb);
       el('rect', { x: x0 + len / 2, y: y0 - 4, width: len / 2, height: 4, fill: 'var(--paper)' }, sb);
       el('line', { x1: x0, y1: y0 - 9, x2: x0, y2: y0 + 1 }, sb);
@@ -281,7 +318,7 @@
   const SLOTS = {
     easy: ['street', 'street', 'place', 'place', 'any'],
     medium: ['street', 'street', 'place', 'blocks', 'any'],
-    hard: ['street', 'street', 'blocks', 'place', 'any'],
+    hard: ['street', 'street', 'blocks', 'blocks', 'any'], // landmarks are all easy now
     daily: ['place', 'street', 'blocks', 'street', 'any'],
   };
   const typeMatches = (slot, type) =>
@@ -530,9 +567,14 @@
     startRound();
   }
 
+  function typeLabel(p) {
+    if (p.type === 'landmark' && p.cat) return t('cats')[p.cat] || t('types').landmark;
+    if (p.type === 'blocks' && p.count) return `${t('types').blocks} · ${p.count}`;
+    return t('types')[p.type];
+  }
+
   function setTypeChip() {
-    const p = state.puzzles[state.round];
-    $('#type-chip').textContent = t('types')[p.type];
+    $('#type-chip').textContent = typeLabel(state.puzzles[state.round]);
   }
 
   function updateRoundMeta() {
@@ -564,8 +606,10 @@
   function drawCurrent(animate) {
     const p = state.puzzles[state.round];
     const svg = $('#silhouette');
-    renderSilhouette(svg, p, { animate, top: 22 });
-    svg.setAttribute('aria-label', t('types')[p.type]);
+    // Buildings are hard to place from the footprint alone: show the streets around
+    // them, except in the hard game.
+    renderSilhouette(svg, p, { animate, top: 22, context: state.mode !== 'hard' });
+    svg.setAttribute('aria-label', typeLabel(p));
   }
 
   function stripPrefix(name) {
@@ -719,7 +763,7 @@
       const mid = document.createElement('div');
       mid.innerHTML = `<div class="er-name"></div><div class="er-sub"></div>`;
       mid.querySelector('.er-name').textContent = p.name[state.lang] || p.name.hu;
-      mid.querySelector('.er-sub').textContent = `${t('types')[p.type]} · ${r.d === 0 ? '0 m' : fmtDist(r.d)}`;
+      mid.querySelector('.er-sub').textContent = `${typeLabel(p)} · ${r.d === 0 ? '0 m' : fmtDist(r.d)}`;
       li.appendChild(mid);
       const pts = document.createElement('div');
       pts.className = 'er-pts';

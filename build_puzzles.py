@@ -515,12 +515,18 @@ def centroid_of_lines(lines):
 
 # Name fragments of buildings every local knows.
 FAMOUS = [
-    "palatul culturii", "kultúrpalota", "cetat", "vártemplom", "teatrul național", "nemzeti színház",
-    "prefectur", "primăria târgu", "városháza", "catedrala", "sinagoga mare", "zsinagóga",
-    "teleki", "bolyai", "apollo", "apolló", "palatul copiilor", "stadion", "sala sporturilor",
-    "universitatea", "egyetem", "umfst", "hotel continental", "concordia", "mureș mall",
-    "papiu", "unirea", "filarmonic", "filharmón", "palatul", "palota", "toldalagi", "bürger",
+    "palatul culturii", "kultúrpalota", "cetatea medieval", "vártemplom", "teatrul național",
+    "nemzeti színház", "prefectur", "primăria târgu", "városháza", "catedrala", "sinagoga mare",
+    "zsinagóga", "teleki", "bolyai", "apollo", "apolló", "palatul copiilor", "stadion",
+    "sala sporturilor", "hotel continental", "concordia", "mureș mall", "papiu", "unirea",
+    "filarmonic", "filharmón", "palatul", "palota", "toldalagi", "bürger",
 ]
+NOT_FAMOUS = ["cetatea copiilor"]  # a playground, not the citadel
+# The old churches whose towers everyone knows; newer congregations rarely are.
+HISTORIC_DENOMINATIONS = {
+    "catholic", "roman_catholic", "greek_catholic", "orthodox", "romanian_orthodox",
+    "reformed", "unitarian", "lutheran", "evangelical",
+}
 # Categories that make a named building a reasonable landmark. Offices and
 # "public buildings" are left out: nobody knows the shape of the records office.
 LANDMARK_AMENITY = {
@@ -534,22 +540,52 @@ LANDMARK_BUILDING = {
 }
 
 
-def landmark_kind(tags, low):
-    """(is_landmark, fame) — fame 0 = everybody knows it, 1 = obscure."""
+def landmark_kind(tags, low, area, from_center):
+    """(is_landmark, fame) — fame 0 = everybody knows it, 1 = obscure.
+
+    Footprints are hard to recognise, so only buildings most locals could place
+    get in: the famous ones, and big churches in the centre whose towers people know.
+    """
     church = (tags.get("amenity") == "place_of_worship"
               or tags.get("building") in ("church", "cathedral", "chapel", "synagogue"))
-    famous = any(k in low for k in FAMOUS)
+    famous = any(k in low for k in FAMOUS) and not any(k in low for k in NOT_FAMOUS)
     if tags.get("historic") in ("castle", "citadel", "fort") or tags.get("leisure") == "stadium":
         return True, 0.0
     if famous:
         return True, 0.05 if church or tags.get("amenity") in ("theatre", "townhall") else 0.15
-    if church:
-        return True, 0.55
-    if (tags.get("amenity") in LANDMARK_AMENITY or tags.get("building") in LANDMARK_BUILDING
-            or tags.get("tourism") in ("hotel", "museum", "attraction") or tags.get("historic")
-            or tags.get("shop") == "mall" or tags.get("leisure") in ("sports_centre", "sports_hall")):
-        return True, 0.6
+    if (church and area >= 450 and from_center < 1300
+            and tags.get("denomination") in HISTORIC_DENOMINATIONS):
+        return True, 0.3
     return False, 1.0
+
+
+def landmark_category(tags, low):
+    """What the round's label says about a landmark (Templom, Színház, …)."""
+    if tags.get("historic") in ("castle", "citadel", "fort") or tags.get("barrier") == "city_wall":
+        return "fortress"
+    if tags.get("leisure") in ("stadium", "sports_centre") or "sala sporturilor" in low:
+        return "sport"
+    if tags.get("building") == "synagogue" or "sinagog" in low:
+        return "synagogue"
+    if tags.get("amenity") == "place_of_worship" or tags.get("building") in ("church", "cathedral", "chapel"):
+        return "church"
+    if "palatul" in low or "palota" in low:
+        return "palace"
+    if tags.get("amenity") == "theatre":
+        return "theatre"
+    if tags.get("amenity") == "townhall" or "primări" in low:
+        return "townhall"
+    if tags.get("tourism") == "hotel" or "hotel" in low:
+        return "hotel"
+    if tags.get("amenity") == "library" or "biblioteca" in low:
+        return "library"
+    if tags.get("shop") == "mall" or " mall" in low:
+        return "mall"
+    if tags.get("amenity") == "university" or tags.get("building") == "university" or "universit" in low:
+        return "university"
+    if tags.get("amenity") in ("school", "college") or tags.get("building") == "school":
+        return "school"
+    return "building"
 
 
 def build_areas(areas_raw, in_city):
@@ -593,11 +629,11 @@ def build_areas(areas_raw, in_city):
 
         # Landmarks: named buildings people know, with outlines worth looking at.
         low = (name + " " + hu).lower()
-        ok, fame = landmark_kind(tags, low)
+        ok, fame = landmark_kind(tags, low, area, dist(c, (0, 0)))
         if not ok:
-            rejected["landmark: not a public/notable building"] += 1
+            rejected["landmark: not well known"] += 1
             continue
-        fortress = tags.get("historic") in ("castle", "citadel", "fort") or "cetat" in low
+        fortress = tags.get("historic") in ("castle", "citadel", "fort")
         stadium = tags.get("leisure") == "stadium"
         if not tags.get("building") and not (fortress or stadium or tags.get("amenity") == "place_of_worship"):
             # School/university grounds are not footprints.
@@ -606,13 +642,7 @@ def build_areas(areas_raw, in_city):
         if area < (150 if fame < 0.3 else 300):
             rejected["landmark: too small"] += 1
             continue
-        pts = [p for r in rings for p in r[:-1]]
-        rect = area / max(1.0, min_rect_area(pts))
-        verts = len(simplify(big, 1.0))
-        if fame >= 0.3 and (rect > 0.88 or verts <= 7):
-            rejected["landmark: plain box outline"] += 1
-            continue
-        landmarks.append({**base, "type": "landmark", "fame": fame})
+        landmarks.append({**base, "type": "landmark", "fame": fame, "cat": landmark_category(tags, low)})
 
     # City walls: one landmark per connected group long enough to be recognisable.
     wall_lines = [l for el in walls for l in element_lines(el) if len(l) >= 2]
@@ -624,7 +654,7 @@ def build_areas(areas_raw, in_city):
         landmarks.append({
             "type": "landmark", "kind": "line", "parts": stitch(group),
             "hu": "A vár falai", "ro": "Zidurile Cetății", "area": 0, "length": length,
-            "fame": 0.0, "osm": [], "key": f"WALL:{gi}", "tags": {"barrier": "city_wall"},
+            "fame": 0.0, "osm": [], "key": f"WALL:{gi}", "tags": {"barrier": "city_wall"}, "cat": "fortress",
         })
 
     # Deduplicate: same name within 200 m -> keep the one with a building tag / larger area.
@@ -789,6 +819,82 @@ def encode_line(pts_xy):
     return out
 
 
+def road_lines(raw):
+    """Metric polylines (with bounding boxes) of every drivable/pedestrian road."""
+    out = []
+    for el in raw["elements"]:
+        t = el.get("tags", {})
+        hw = t.get("highway")
+        if not hw or hw == "service" or t.get("area") == "yes" or el["type"] != "way":
+            continue
+        for line in element_lines(el):
+            if len(line) < 2:
+                continue
+            xs = [p[0] for p in line]
+            ys = [p[1] for p in line]
+            out.append((line, (min(xs), min(ys), max(xs), max(ys))))
+    return out
+
+
+def clip_segment(a, b, box):
+    """Liang–Barsky: the part of segment a-b inside box, or None."""
+    x0, y0, x1, y1 = box
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    t0, t1 = 0.0, 1.0
+    for p, q in ((-dx, a[0] - x0), (dx, x1 - a[0]), (-dy, a[1] - y0), (dy, y1 - a[1])):
+        if p == 0:
+            if q < 0:
+                return None
+            continue
+        r = q / p
+        if p < 0:
+            t0 = max(t0, r)
+        else:
+            t1 = min(t1, r)
+        if t0 > t1:
+            return None
+    return (a[0] + t0 * dx, a[1] + t0 * dy), (a[0] + t1 * dx, a[1] + t1 * dy)
+
+
+def context_streets(parts, roads, min_frame=280, grow=0.35):
+    """The streets around a building or block cluster, cropped to a frame around it.
+
+    Returns (polylines, frame) in metric coordinates. The frame is at least
+    `min_frame` metres across so there is always some street pattern to recognise,
+    and leaves `grow` × the shape's size of margin on each side.
+    """
+    xs = [p[0] for part in parts for p in part]
+    ys = [p[1] for part in parts for p in part]
+    w, h = max(xs) - min(xs), max(ys) - min(ys)
+    mx = max(40, grow * w, (min_frame - w) / 2)
+    my = max(40, grow * h, (min_frame - h) / 2)
+    frame = (min(xs) - mx, min(ys) - my, max(xs) + mx, max(ys) + my)
+    # Streets are kept well beyond the frame so a wide or tall sheet is filled to its edges.
+    pad = 0.6 * max(frame[2] - frame[0], frame[3] - frame[1])
+    box = (frame[0] - pad, frame[1] - pad, frame[2] + pad, frame[3] + pad)
+    out = []
+    for line, lb in roads:
+        if lb[0] > box[2] or lb[2] < box[0] or lb[1] > box[3] or lb[3] < box[1]:
+            continue
+        cur = []
+        for i in range(len(line) - 1):
+            seg = clip_segment(line[i], line[i + 1], box)
+            if seg is None:
+                if len(cur) >= 2:
+                    out.append(cur)
+                cur = []
+                continue
+            if cur and dist(cur[-1], seg[0]) < 0.01:
+                cur.append(seg[1])
+            else:
+                if len(cur) >= 2:
+                    out.append(cur)
+                cur = [seg[0], seg[1]]
+        if len(cur) >= 2:
+            out.append(cur)
+    return [simplify(l, 1.5) for l in out if polyline_len(l) > 5], frame
+
+
 def build_basemap(raw):
     layers = defaultdict(list)
     for el in raw["elements"]:
@@ -890,6 +996,7 @@ def main():
             cl["ro"] = f"Blocuri – {nb['ro']}" if nb["ro"] else "Grup de blocuri"
 
     candidates = streets + squares + landmarks + clusters
+    roads = road_lines(raw["basemap"])
 
     # Difficulty: fame (road class / landmark / blocks), centrality, size.
     for p in candidates:
@@ -943,6 +1050,16 @@ def main():
             "size": round(p["length"]) if p["kind"] == "line" else round(p["area"]),
             "geom": parts,
         }
+        if p["type"] in ("landmark", "blocks"):
+            # Buildings get a tighter frame than block clusters so the footprint stays legible.
+            frame = (170, 1.0) if p["type"] == "landmark" else (280, 0.35)
+            ctx, (bx0, by0, bx1, by1) = context_streets(p["parts"], roads, *frame)
+            # Same compact encoding as basemap.json: delta ints in 1e-5° from the SW corner.
+            item["ctx"] = [enc for enc in (encode_line(l) for l in ctx) if len(enc) >= 4]
+            (s0, w0), (n0, e0) = to_ll(bx0, by0), to_ll(bx1, by1)
+            item["cbox"] = [round(s0, 5), round(w0, 5), round(n0, 5), round(e0, 5)]
+        if p.get("cat"):
+            item["cat"] = p["cat"]
         if p["type"] == "blocks":
             item["count"] = p["count"]
             if p.get("street"):
@@ -956,6 +1073,8 @@ def main():
         "osm_timestamp": raw["streets"].get("osm3s", {}).get("timestamp_osm_base", ""),
         "attribution": "© OpenStreetMap contributors (ODbL)",
         "bounds": bounds,
+        "ctx_origin": [SOUTH, WEST],
+        "ctx_unit": 1e-5,
         "center": list(CENTER),
         "puzzles": puzzles,
     }
