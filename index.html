@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#efeadb">
+<meta name="description" content="Melyik utca? – Marosvásárhelyi utcakvíz: csak a formát látod, neked kell megtalálnod a térképen.">
+<title>Melyik utca? – Marosvásárhely</title>
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23efeadb'/%3E%3Cpath d='M6 24 C10 22 11 14 16 13 S23 8 26 6' fill='none' stroke='%231a2233' stroke-width='4' stroke-linecap='round'/%3E%3Ccircle cx='22' cy='22' r='3' fill='%23d2452b'/%3E%3C/svg%3E">
+</head>
+<body>
+<div id="app" data-screen="start">
+
+  <header class="topbar">
+    <button class="brand" id="home-btn" type="button" aria-label="Főoldal">
+      <span class="brand-mark" aria-hidden="true"></span><span class="brand-name">Melyik utca?</span>
+    </button>
+    <div class="round-meta" id="round-meta" aria-live="polite"></div>
+    <div class="lang" role="group" aria-label="Nyelv / Limba">
+      <button type="button" data-lang="hu" aria-pressed="true">HU</button>
+      <button type="button" data-lang="ro" aria-pressed="false">RO</button>
+    </div>
+  </header>
+
+  <!-- START -->
+  <main class="screen" id="screen-start">
+    <section class="titleblock">
+      <svg class="hero" id="hero" aria-hidden="true"></svg>
+      <h1><span class="t-q">Melyik</span> <span class="t-u">utca?</span></h1>
+      <p class="sub" data-i18n="subtitle"></p>
+      <dl class="stamp">
+        <div><dt data-i18n="sheet">Lap</dt><dd>MV-46°32′</dd></div>
+        <div><dt data-i18n="scale">Lépték</dt><dd>1 : ?</dd></div>
+      </dl>
+    </section>
+
+    <button type="button" class="daily" id="daily-btn">
+      <span class="daily-k" data-i18n="daily"></span>
+      <span class="daily-date" id="daily-date"></span>
+      <span class="daily-sub" id="daily-sub"></span>
+      <span class="daily-go" aria-hidden="true">→</span>
+    </button>
+
+    <section class="free">
+      <h2 data-i18n="freePlay"></h2>
+      <div class="seg" role="radiogroup" id="diff-seg">
+        <button type="button" role="radio" data-diff="easy"><b data-i18n="easy"></b><small id="best-easy"></small></button>
+        <button type="button" role="radio" data-diff="medium"><b data-i18n="medium"></b><small id="best-medium"></small></button>
+        <button type="button" role="radio" data-diff="hard"><b data-i18n="hard"></b><small id="best-hard"></small></button>
+      </div>
+      <button type="button" class="btn primary wide" id="start-btn" data-i18n="start"></button>
+    </section>
+
+    <details class="rules" open>
+      <summary data-i18n="rulesTitle"></summary>
+      <ol>
+        <li data-i18n="rule1"></li>
+        <li data-i18n="rule2"></li>
+        <li data-i18n="rule3"></li>
+        <li data-i18n="rule4"></li>
+      </ol>
+      <div class="formula" aria-label="Pontozás">
+        <div class="f-line">P = 5000 <span class="f-dim" data-i18n="formulaIf"></span></div>
+        <div class="f-line">P = 5000 · <span class="frac"><span>e<sup>−(d−25)/700</sup> − e<sup>−4,25</sup></span><span>1 − e<sup>−4,25</sup></span></span></div>
+        <div class="f-note" data-i18n="formulaNote"></div>
+      </div>
+    </details>
+
+    <footer class="credits">
+      <span data-i18n="dataCredit"></span>
+      <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap</a>
+      <span id="carto-credit" hidden>· <a href="https://carto.com/attributions" target="_blank" rel="noopener">© CARTO</a></span>
+      <span id="data-date"></span>
+    </footer>
+  </main>
+
+  <!-- ROUND -->
+  <main class="screen" id="screen-game">
+    <section class="sheet" id="sheet">
+      <div class="sheet-meta">
+        <span class="chip" id="type-chip"></span>
+        <span class="hint-text" id="hint-text" aria-live="polite"></span>
+      </div>
+      <svg id="silhouette" role="img" aria-label=""></svg>
+      <i class="crop tl"></i><i class="crop tr"></i><i class="crop bl"></i><i class="crop br"></i>
+    </section>
+
+    <section class="mapwrap">
+      <div id="map" aria-label="Térkép"></div>
+      <div class="map-tip" id="map-tip" data-i18n="tapMap"></div>
+    </section>
+
+    <div class="actionbar" id="actionbar">
+      <button type="button" class="btn ghost" id="hint-btn"></button>
+      <button type="button" class="btn primary" id="guess-btn" disabled data-i18n="guess"></button>
+    </div>
+
+    <section class="reveal" id="reveal" hidden>
+      <div class="rv-top">
+        <div class="rv-names">
+          <div class="rv-name" id="rv-name"></div>
+          <div class="rv-alt" id="rv-alt"></div>
+        </div>
+        <div class="rv-pts"><b id="rv-pts"></b><small data-i18n="points"></small></div>
+      </div>
+      <div class="rv-bottom">
+        <div class="rv-dist" id="rv-dist"></div>
+        <button type="button" class="btn primary" id="next-btn"></button>
+      </div>
+    </section>
+  </main>
+
+  <!-- END -->
+  <main class="screen" id="screen-end">
+    <section class="end-head">
+      <p class="end-k" id="end-k"></p>
+      <div class="end-total"><b id="end-total"></b><small>/ 25 000</small></div>
+      <p class="end-best" id="end-best"></p>
+    </section>
+    <ol class="end-rounds" id="end-rounds"></ol>
+    <section class="share">
+      <pre class="share-line" id="share-line"></pre>
+      <button type="button" class="btn primary wide" id="copy-btn" data-i18n="copy"></button>
+    </section>
+    <div class="end-actions">
+      <button type="button" class="btn ghost" id="again-btn" data-i18n="again"></button>
+      <button type="button" class="btn ghost" id="menu-btn" data-i18n="menu"></button>
+    </div>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</div>
+
+<script src="vendor/leaflet/leaflet.js"></script>
+<script src="config.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
