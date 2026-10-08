@@ -1,40 +1,34 @@
 /* Melyik utca? — tracing paper & india ink */
 
-@font-face { font-family: "Instrument Serif"; font-style: normal; font-weight: 400; font-display: swap;
-  src: url(vendor/fonts/instrument-serif-latin-400-normal.woff2) format("woff2");
+@font-face { font-family: "Gloock"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url(vendor/fonts/gloock-latin-400-normal.woff2) format("woff2");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
-@font-face { font-family: "Instrument Serif"; font-style: normal; font-weight: 400; font-display: swap;
-  src: url(vendor/fonts/instrument-serif-latin-ext-400-normal.woff2) format("woff2");
+@font-face { font-family: "Gloock"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url(vendor/fonts/gloock-latin-ext-400-normal.woff2) format("woff2");
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1E00-1E9F, U+1EF2-1EFF, U+2C60-2C7F, U+A720-A7FF; }
-@font-face { font-family: "Instrument Serif"; font-style: italic; font-weight: 400; font-display: swap;
-  src: url(vendor/fonts/instrument-serif-latin-400-italic.woff2) format("woff2");
+@font-face { font-family: "Barlow SC"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url(vendor/fonts/barlow-semi-condensed-latin-400-normal.woff2) format("woff2");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
-@font-face { font-family: "Instrument Serif"; font-style: italic; font-weight: 400; font-display: swap;
-  src: url(vendor/fonts/instrument-serif-latin-ext-400-italic.woff2) format("woff2");
+@font-face { font-family: "Barlow SC"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url(vendor/fonts/barlow-semi-condensed-latin-ext-400-normal.woff2) format("woff2");
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1E00-1E9F, U+1EF2-1EFF, U+2C60-2C7F, U+A720-A7FF; }
-@font-face { font-family: "Plex Cond"; font-weight: 400; font-display: swap;
-  src: url(vendor/fonts/ibm-plex-sans-condensed-latin-400-normal.woff2) format("woff2");
+@font-face { font-family: "Barlow SC"; font-style: normal; font-weight: 600; font-display: swap;
+  src: url(vendor/fonts/barlow-semi-condensed-latin-600-normal.woff2) format("woff2");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
-@font-face { font-family: "Plex Cond"; font-weight: 400; font-display: swap;
-  src: url(vendor/fonts/ibm-plex-sans-condensed-latin-ext-400-normal.woff2) format("woff2");
+@font-face { font-family: "Barlow SC"; font-style: normal; font-weight: 600; font-display: swap;
+  src: url(vendor/fonts/barlow-semi-condensed-latin-ext-600-normal.woff2) format("woff2");
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1E00-1E9F, U+1EF2-1EFF, U+2C60-2C7F, U+A720-A7FF; }
-@font-face { font-family: "Plex Cond"; font-weight: 600; font-display: swap;
-  src: url(vendor/fonts/ibm-plex-sans-condensed-latin-600-normal.woff2) format("woff2");
+@font-face { font-family: "DM Mono"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url(vendor/fonts/dm-mono-latin-400-normal.woff2) format("woff2");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
-@font-face { font-family: "Plex Cond"; font-weight: 600; font-display: swap;
-  src: url(vendor/fonts/ibm-plex-sans-condensed-latin-ext-600-normal.woff2) format("woff2");
+@font-face { font-family: "DM Mono"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url(vendor/fonts/dm-mono-latin-ext-400-normal.woff2) format("woff2");
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1E00-1E9F, U+1EF2-1EFF, U+2C60-2C7F, U+A720-A7FF; }
-@font-face { font-family: "Plex Mono"; font-weight: 400; font-display: swap;
-  src: url(vendor/fonts/ibm-plex-mono-latin-400-normal.woff2) format("woff2");
+@font-face { font-family: "DM Mono"; font-style: normal; font-weight: 500; font-display: swap;
+  src: url(vendor/fonts/dm-mono-latin-500-normal.woff2) format("woff2");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
-@font-face { font-family: "Plex Mono"; font-weight: 400; font-display: swap;
-  src: url(vendor/fonts/ibm-plex-mono-latin-ext-400-normal.woff2) format("woff2");
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1E00-1E9F, U+1EF2-1EFF, U+2C60-2C7F, U+A720-A7FF; }
-@font-face { font-family: "Plex Mono"; font-weight: 500; font-display: swap;
-  src: url(vendor/fonts/ibm-plex-mono-latin-500-normal.woff2) format("woff2");
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
-@font-face { font-family: "Plex Mono"; font-weight: 500; font-display: swap;
-  src: url(vendor/fonts/ibm-plex-mono-latin-ext-500-normal.woff2) format("woff2");
+@font-face { font-family: "DM Mono"; font-style: normal; font-weight: 500; font-display: swap;
+  src: url(vendor/fonts/dm-mono-latin-ext-500-normal.woff2) format("woff2");
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1E00-1E9F, U+1EF2-1EFF, U+2C60-2C7F, U+A720-A7FF; }
 
 :root {
@@ -53,9 +47,9 @@
   --mid: #c9952b;
   --bad: #b8402c;
   --radius: 4px;
-  --serif: "Instrument Serif", "Iowan Old Style", Georgia, serif;
-  --sans: "Plex Cond", "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
-  --mono: "Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --serif: "Gloock", "Iowan Old Style", Georgia, serif;
+  --sans: "Barlow SC", "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
+  --mono: "DM Mono", ui-monospace, Menlo, Consolas, monospace;
   --safe-b: env(safe-area-inset-bottom, 0px);
   color-scheme: light;
 }
@@ -96,7 +90,7 @@ a { color: var(--cyan); }
 .brand { display: flex; align-items: center; gap: 8px; background: none; border: 0; padding: 6px 4px; margin-left: -4px; }
 .brand-mark { width: 22px; height: 22px; border: 1.5px solid var(--ink); border-radius: 50%; position: relative; }
 .brand-mark::after { content: ""; position: absolute; left: 4px; right: 4px; top: 9px; height: 2.5px; background: var(--ink); transform: rotate(-35deg); border-radius: 2px; }
-.brand-name { font-family: var(--serif); font-style: italic; font-size: 21px; letter-spacing: .01em; }
+.brand-name { font-family: var(--serif); font-size: 20px; letter-spacing: .005em; }
 [data-screen="start"] .brand-name { visibility: hidden; }
 .round-meta { flex: 1; text-align: center; font-family: var(--mono); font-size: 13px; letter-spacing: .02em; white-space: nowrap; }
 .round-meta b { font-weight: 500; }
@@ -131,9 +125,10 @@ a { color: var(--cyan); }
 .hero { display: block; width: 100%; height: 170px; margin: 44px 0 -14px; }
 .hero path { fill: none; stroke: var(--ink); stroke-linecap: round; stroke-linejoin: round; }
 .hero .ghost { stroke: var(--grid-major); }
-h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(56px, 17vw, 84px); line-height: .9; margin: 0; letter-spacing: -.01em; }
-h1 .t-u { font-style: italic; }
-h1 .t-u::after { content: ""; display: inline-block; width: .16em; height: .16em; border-radius: 50%; background: var(--pencil); margin-left: .04em; vertical-align: .05em; }
+h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(52px, 15.5vw, 78px); line-height: .92; margin: 0; letter-spacing: -.015em; font-synthesis: none; }
+h1 .t-u { color: var(--pencil); }
+h1 .t-u::after { content: ""; display: block; height: 3px; margin-top: .06em; background: var(--ink); border-radius: 2px; transform: rotate(-1.2deg); transform-origin: left; }
+h1 .t-u { display: inline-block; }
 .sub { margin: 10px 0 0; color: var(--ink-2); font-size: 16px; max-width: 32ch; }
 .stamp { position: absolute; right: 0; top: 18px; margin: 0; display: grid; border: 1.5px solid var(--ink); background: var(--paper); z-index: 1; font-family: var(--mono); font-size: 10.5px; }
 .stamp div { display: flex; gap: 8px; padding: 3px 7px; justify-content: space-between; }
@@ -151,7 +146,7 @@ h1 .t-u::after { content: ""; display: inline-block; width: .16em; height: .16em
 }
 .daily:active { transform: translate(3px, 3px); box-shadow: 2px 2px 0 var(--pencil); }
 .daily-k { grid-area: k; font-family: var(--mono); font-size: 12px; text-transform: uppercase; letter-spacing: .14em; opacity: .75; }
-.daily-date { grid-area: d; font-family: var(--serif); font-size: 32px; line-height: 1.05; }
+.daily-date { grid-area: d; font-family: var(--serif); font-size: 28px; line-height: 1.1; }
 .daily-sub { grid-area: s; font-size: 14px; opacity: .8; margin-top: 2px; }
 .daily-go { grid-area: go; align-self: center; font-size: 30px; padding-left: 12px; }
 
@@ -257,7 +252,7 @@ sup { font-size: .72em; }
 @keyframes slide { from { transform: translateY(100%); } to { transform: none; } }
 .rv-top { display: flex; gap: 12px; align-items: flex-start; }
 .rv-names { flex: 1; min-width: 0; }
-.rv-name { font-family: var(--serif); font-size: 27px; line-height: 1.05; overflow-wrap: anywhere; }
+.rv-name { font-family: var(--serif); font-size: 24px; line-height: 1.1; overflow-wrap: anywhere; }
 .rv-alt { color: var(--ink-2); font-size: 15px; margin-top: 3px; overflow-wrap: anywhere; }
 .rv-pts { text-align: right; font-family: var(--mono); flex: none; }
 .rv-pts b { display: block; font-size: 30px; font-weight: 500; line-height: 1; color: var(--pencil); }
@@ -271,7 +266,7 @@ sup { font-size: .72em; }
 .end-head { padding: 26px 0 10px; text-align: center; }
 .end-k { font-family: var(--mono); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-2); margin: 0; }
 .end-total { font-family: var(--serif); line-height: 1; margin-top: 6px; }
-.end-total b { font-weight: 400; font-size: clamp(64px, 20vw, 92px); }
+.end-total b { font-weight: 400; font-size: clamp(58px, 18vw, 84px); }
 .end-total small { display: block; font-family: var(--mono); font-size: 13px; color: var(--ink-3); margin-top: 4px; }
 .end-best { margin: 10px 0 0; font-size: 15px; color: var(--pencil); font-weight: 600; min-height: 1.4em; }
 .end-rounds { list-style: none; margin: 18px 0 0; padding: 0; border-top: 1.5px solid var(--ink); }
