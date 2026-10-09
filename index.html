@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#efeadb">
-<meta name="description" content="Melyik utca? – Marosvásárhelyi utcakvíz: csak a formát látod, neked kell megtalálnod a térképen.">
+<meta name="description" content="Melyik utca? – Marosvásárhelyi utcakvíz egy felirat nélküli térképen: utcák, terek, épületek.">
 <title>Melyik utca? – Marosvásárhely</title>
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
 <link rel="stylesheet" href="style.css">
@@ -81,9 +81,16 @@
     <section class="sheet" id="sheet">
       <div class="sheet-meta">
         <span class="chip" id="type-chip"></span>
+        <span class="kind-label" id="kind-label"></span>
         <span class="hint-text" id="hint-text" aria-live="polite"></span>
       </div>
       <svg id="silhouette" role="img" aria-label=""></svg>
+      <div class="prompt" id="prompt">
+        <p class="prompt-q" id="prompt-q"></p>
+        <h2 class="prompt-name" id="prompt-name"></h2>
+        <p class="prompt-alt" id="prompt-alt"></p>
+      </div>
+      <div class="choices" id="choices" role="group"></div>
       <i class="crop tl"></i><i class="crop tr"></i><i class="crop bl"></i><i class="crop br"></i>
     </section>
 
@@ -95,6 +102,7 @@
     <div class="actionbar" id="actionbar">
       <button type="button" class="btn ghost" id="hint-btn"></button>
       <button type="button" class="btn primary" id="guess-btn" disabled data-i18n="guess"></button>
+      <p class="choose-tip" data-i18n="chooseTip"></p>
     </div>
 
     <section class="reveal" id="reveal" hidden>

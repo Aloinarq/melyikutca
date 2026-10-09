@@ -1,39 +1,53 @@
-/* Melyik utca? — a street-shape quiz for Marosvásárhely / Târgu Mureș. */
+/* Melyik utca? — a street quiz for Marosvásárhely / Târgu Mureș. */
 (function () {
   'use strict';
 
   const ROUNDS = 5;
   const MAX_POINTS = 5000;
   const HINT_COST = [500, 1000];
+  const CHOOSE_POINTS = [5000, 2500, 1000, 0]; // by wrong picks before the right one
+  const HALVE_COST = 1500;
   const TZ = 'Europe/Bucharest';
   const STORE = 'melyikutca:';
 
   // ------------------------------------------------------------------ text
   const I18N = {
     hu: {
-      subtitle: 'Csak a formát látod. Hol van ez Marosvásárhelyen?',
+      subtitle: 'Mennyire ismered Marosvásárhelyt? Utcák, terek, épületek egy felirat nélküli térképen.',
       sheet: 'Lap', scale: 'Lépték',
       daily: 'Napi kihívás',
-      dailyNew: 'Mindenki ugyanazt az öt formát kapja ma.',
+      dailyNew: 'Mindenki ugyanazt az öt feladványt kapja ma.',
       dailyDone: (s) => `Mai eredményed: ${s} pont — újra játszható`,
       freePlay: 'Szabad játék',
       easy: 'Könnyű', medium: 'Közepes', hard: 'Nehéz',
       best: (s) => `rekord ${s}`,
       start: 'Indulás',
       rulesTitle: 'Szabályok',
-      rule1: 'Öt kör. Minden körben egy valódi marosvásárhelyi hely alaprajzát látod: utcát, teret, épületet vagy tömbházcsoportot. Nincs név, az észak felfelé van. Épületeknél halványan a környező utcák is látszanak — kivéve a Nehéz szinten.',
-      rule2: 'A léptékvonal megmutatja a méretet — ez is árulkodó.',
-      rule3: 'Koppints a térképre, ahová szerinted tartozik (a tűt utána is mozgathatod), majd nyomd meg a „Tipp!” gombot.',
-      rule4: 'A pontszám a tipped és az alakzat legközelebbi pontja közötti távolságtól függ (utcánál a vonaltól, épületnél a körvonaltól). Segítséget kérhetsz: a városrész neve −500, a kezdőbetű további −1000 pont.',
+      rule1: '„Melyik ez?” — a térképen kiemelve látsz egy utcát, teret vagy épületet: válaszd ki a nevét a négy közül. Elsőre 5000 pont, másodikra 2500, harmadikra 1000.',
+      rule2: '„Hol van?” — megkapod a nevet: koppints a térképen oda, ahol szerinted van (a tűt mozgathatod), majd „Tipp!”.',
+      rule3: '„Csak a forma” — csak az alakját látod (épületeknél a környező utcákkal együtt), és meg kell találnod a térképen.',
+      rule4: 'Könnyű szinten csak közismert helyek jönnek, Nehézen a kevésbé ismert utcák is. Segítség: városrész −500, alak vagy kezdőbetű −1000, felezés −1500 pont. A térképes köröknél a távolság számít:',
       formulaIf: 'ha d ≤ 25 m',
       formulaNote: '25 m-en belül 5000 pont, kb. 500 m-nél nagyjából a fele, 3 km-nél 0.',
       dataCredit: 'Térképadatok:',
       dataAsOf: (d) => ` · adatok: ${d}`,
       tapMap: 'Koppints a térképre!',
+      chooseTip: 'Koppints a helyes névre',
+      kinds: { choose: 'Melyik ez?', locate: 'Hol van?', shape: 'Csak a forma' },
+      questions: {
+        street: 'Melyik utca ez?', square: 'Melyik tér ez?', landmark: 'Melyik épület ez?',
+        blocks: 'Melyik utcánál állnak?',
+      },
+      whereIs: 'Hol van?',
+      shapeQ: 'Hol van ez?',
+      halve: 'Felezés',
+      showShape: (n) => `Az alakja ${n}`,
+      tries: ['Elsőre!', 'Másodikra', 'Harmadikra', 'Nem sikerült'],
       guess: 'Tipp!',
       hint: 'Segítség', hintCost: (c) => `−${c} pont`, noMoreHints: 'Nincs több segítség',
       hood: (n) => `Városrész: ${n}`, hoodUnknown: 'Városrész: ismeretlen',
       letter: (l) => `Kezdőbetű: ${l}…`,
+      shapeShown: 'Alak: lent',
       round: (i) => `${i}/${ROUNDS}. kör`,
       points: 'pont',
       next: 'Következő', finish: 'Eredmény',
@@ -56,29 +70,41 @@
       blocksN: (n) => `${n} tömbház`,
     },
     ro: {
-      subtitle: 'Vezi doar forma. Unde e asta în Târgu Mureș?',
+      subtitle: 'Cât de bine cunoști Târgu Mureșul? Străzi, piețe și clădiri pe o hartă fără nume.',
       sheet: 'Plan', scale: 'Scara',
       daily: 'Provocarea zilei',
-      dailyNew: 'Toată lumea primește azi aceleași cinci forme.',
+      dailyNew: 'Toată lumea primește azi aceleași cinci întrebări.',
       dailyDone: (s) => `Rezultatul tău de azi: ${s} puncte — poți rejuca`,
       freePlay: 'Joc liber',
       easy: 'Ușor', medium: 'Mediu', hard: 'Greu',
       best: (s) => `record ${s}`,
       start: 'Start',
       rulesTitle: 'Reguli',
-      rule1: 'Cinci runde. În fiecare rundă vezi planul unui loc real din Târgu Mureș: o stradă, o piață, o clădire sau un grup de blocuri. Fără nume, nordul e în sus. La clădiri se văd estompat și străzile din jur — mai puțin la nivelul Greu.',
-      rule2: 'Bara de scară arată mărimea — și ea e un indiciu.',
-      rule3: 'Atinge harta unde crezi că se află (poți muta acul după aceea), apoi apasă „Tipp!”.',
-      rule4: 'Punctajul depinde de distanța dintre ac și cel mai apropiat punct al formei (la străzi față de linie, la clădiri față de contur). Indicii: numele cartierului −500, prima literă încă −1000 de puncte.',
+      rule1: '„Care e?” — pe hartă e evidențiată o stradă, o piață sau o clădire: alege numele dintre patru variante. Din prima 5000 de puncte, din a doua 2500, din a treia 1000.',
+      rule2: '„Unde e?” — primești numele: atinge harta unde crezi că se află (poți muta acul), apoi „Tipp!”.',
+      rule3: '„Doar forma” — vezi doar forma (la clădiri împreună cu străzile din jur) și trebuie s-o găsești pe hartă.',
+      rule4: 'La nivelul Ușor apar doar locuri cunoscute, la Greu și străzi mai puțin știute. Indicii: cartierul −500, forma sau prima literă −1000, înjumătățirea −1500 de puncte. La rundele pe hartă contează distanța:',
       formulaIf: 'dacă d ≤ 25 m',
       formulaNote: 'Sub 25 m: 5000 de puncte, la ~500 m cam jumătate, la 3 km: 0.',
       dataCredit: 'Date hartă:',
       dataAsOf: (d) => ` · date: ${d}`,
       tapMap: 'Atinge harta!',
+      chooseTip: 'Atinge numele corect',
+      kinds: { choose: 'Care e?', locate: 'Unde e?', shape: 'Doar forma' },
+      questions: {
+        street: 'Ce stradă e asta?', square: 'Ce piață e asta?', landmark: 'Ce clădire e asta?',
+        blocks: 'Lângă ce stradă sunt?',
+      },
+      whereIs: 'Unde e?',
+      shapeQ: 'Unde e asta?',
+      halve: 'Jumătate',
+      showShape: (n) => `Forma ${n}`,
+      tries: ['Din prima!', 'Din a doua', 'Din a treia', 'Nu a reușit'],
       guess: 'Tipp!',
       hint: 'Indiciu', hintCost: (c) => `−${c} puncte`, noMoreHints: 'Nu mai sunt indicii',
       hood: (n) => `Cartier: ${n}`, hoodUnknown: 'Cartier: necunoscut',
       letter: (l) => `Prima literă: ${l}…`,
+      shapeShown: 'Forma: mai jos',
       round: (i) => `Runda ${i}/${ROUNDS}`,
       points: 'puncte',
       next: 'Următoarea', finish: 'Rezultat',
@@ -313,70 +339,91 @@
     return { scale: s };
   }
 
-  // ------------------------------------------------------------------ puzzle choice
+  // ------------------------------------------------------------------ round planning
+  // Three kinds of round, from easiest to hardest:
+  //   choose — the place is highlighted on the map, pick its name from four;
+  //   locate — the name is given, tap where it is;
+  //   shape  — only the outline (buildings with their streets), tap where it is.
+  // [kind, tier, distractor style]. Tier is how well known the place is (build_puzzles.py).
   const TIERS = ['easy', 'medium', 'hard'];
-  const SLOTS = {
-    easy: ['street', 'street', 'place', 'place', 'any'],
-    medium: ['street', 'street', 'place', 'blocks', 'any'],
-    hard: ['street', 'street', 'blocks', 'blocks', 'any'], // landmarks are all easy now
-    daily: ['place', 'street', 'blocks', 'street', 'any'],
+  const PLANS = {
+    easy: [['choose', 'easy', 'far'], ['choose', 'easy', 'far'], ['locate', 'easy'], ['choose', 'easy', 'far'], ['locate', 'easy']],
+    medium: [['choose', 'medium', 'near'], ['locate', 'easy'], ['choose', 'medium', 'near'], ['locate', 'medium'], ['shape', 'easy']],
+    hard: [['locate', 'medium'], ['shape', 'easy'], ['choose', 'hard', 'near'], ['locate', 'hard'], ['choose', 'blocks', 'near']],
+    daily: [['choose', 'easy', 'far'], ['locate', 'easy'], ['choose', 'medium', 'near'], ['locate', 'medium'], ['shape', 'easy']],
   };
-  const typeMatches = (slot, type) =>
-    slot === 'any' || slot === type || (slot === 'place' && (type === 'square' || type === 'landmark'));
 
-  function pickPuzzles(all, mode, rng, exclude) {
-    const tiersFor = mode === 'daily' ? ['easy', 'medium', 'medium', 'hard', 'hard'] : Array(ROUNDS).fill(mode);
-    let slots = shuffle(SLOTS[mode], rng);
-    if (mode === 'daily') slots = SLOTS.daily; // fixed arc: easy landmark → hard finale
-    const sorted = all.slice().sort((a, b) => (a.id < b.id ? -1 : 1));
-    const chosen = [];
-    const far = (p) => chosen.every((q) => Math.hypot(...proj(p.centroid).map((v, i) => v - proj(q.centroid)[i])) > 400);
-    const used = new Set(exclude || []), usedNames = new Set();
-    for (let r = 0; r < ROUNDS; r++) {
-      const tier = tiersFor[r], slot = slots[r];
-      const ti = TIERS.indexOf(tier);
-      const near = [tier, TIERS[ti - 1], TIERS[ti + 1]].filter(Boolean);
-      // [test, minimum pool size]: a type with only a couple of puzzles in this tier
-      // borrows from the neighbouring tier instead of repeating the same few every game.
-      const tries = [
-        [(p) => p.difficulty === tier && typeMatches(slot, p.type) && far(p), 6],
-        [(p) => near.includes(p.difficulty) && typeMatches(slot, p.type) && far(p), 1],
-        [(p) => near.includes(p.difficulty) && typeMatches(slot, p.type), 1],
-        [(p) => p.difficulty === tier, 1],
-        [() => true, 1],
-      ];
-      // "any" slots prefer a type not yet in the game, for variety.
-      if (slot === 'any') {
-        // A type that is neither in the game yet nor coming up in a later slot.
-        const later = slots.slice(r + 1);
-        const fresh = (type) => !chosen.some((q) => q.type === type) && !later.some((sl) => typeMatches(sl, type));
-        tries.unshift(
-          [(p) => p.difficulty === tier && far(p) && fresh(p.type), 6],
-          [(p) => p.difficulty === tier && far(p) && p.type === 'street', 1]);
-      }
-      let pick = null;
-      for (const [test, min] of tries) {
-        const pool = sorted.filter((p) => !used.has(p.id) && !usedNames.has(p.name.ro) && test(p));
-        if (pool.length >= min) { pick = pool[Math.floor(rng() * pool.length)]; break; }
-      }
-      if (!pick) break;
-      used.add(pick.id);
-      usedNames.add(pick.name.ro);
-      chosen.push(pick);
+  // Wrong answers come from the same kind of place as the right one.
+  const group = (p) => p.type;
+  const metres = (a, b) => { const p = proj(a), q = proj(b); return Math.hypot(p[0] - q[0], p[1] - q[1]); };
+  // What a multiple-choice button says: block clusters are named by their street.
+  const optionName = (p, lang) => {
+    const n = p.type === 'blocks' && p.street ? p.street : p.name;
+    return (lang === 'ro' ? n.ro || n.hu : n.hu || n.ro) || '';
+  };
+  const sameName = (a, b) => optionName(a, 'hu') === optionName(b, 'hu') || optionName(a, 'ro') === optionName(b, 'ro');
+
+  /** Three wrong answers: far-away well-known ones (easy) or the neighbours (harder). */
+  function makeOptions(p, style, all, rng) {
+    const pool = all.filter((q) => q.id !== p.id && group(q) === group(p) && !sameName(q, p));
+    let cands;
+    if (style === 'far') {
+      // Well-known names only, so the right answer is the one that fits the map.
+      const known = (q) => (p.difficulty === 'easy' ? q.difficulty === 'easy' : q.difficulty !== 'hard');
+      cands = shuffle(pool.filter((q) => known(q) && metres(q.centroid, p.centroid) > 1200), rng);
+    } else {
+      const near = pool.filter((q) => metres(q.centroid, p.centroid) > 120)
+        .sort((a, b) => metres(a.centroid, p.centroid) - metres(b.centroid, p.centroid));
+      cands = shuffle(near.slice(0, 9), rng).concat(near.slice(9));
     }
-    return chosen;
+    const picked = [];
+    for (const q of cands.concat(shuffle(pool, rng))) {
+      if (picked.length === 3) break;
+      if (!picked.some((o) => sameName(o, q))) picked.push(q);
+    }
+    return shuffle([p, ...picked], rng);
+  }
+
+  function pickRounds(all, mode, rng, exclude) {
+    const sorted = all.slice().sort((a, b) => (a.id < b.id ? -1 : 1));
+    const used = new Set(exclude || []), usedNames = new Set(), shown = new Set();
+    const rounds = [];
+    const far = (p) => rounds.every((r) => metres(r.p.centroid, p.centroid) > 400);
+    for (const [kind, tier, style] of PLANS[mode]) {
+      const fits = (p) => {
+        if (tier === 'blocks') return p.type === 'blocks';
+        if (p.type === 'blocks') return false;
+        if (kind === 'shape' && !p.shape) return false;
+        return p.difficulty === tier;
+      };
+      let pool = sorted.filter((p) => fits(p) && !used.has(p.id) && !usedNames.has(p.name.ro));
+      if (pool.filter(far).length) pool = pool.filter(far);
+      // Don't make the answer something that was already offered as a wrong option.
+      if (pool.some((p) => !shown.has(p.id))) pool = pool.filter((p) => !shown.has(p.id));
+      if (!pool.length) continue;
+      // Mix streets with squares and buildings when the tier has both.
+      const places = pool.filter((p) => p.type === 'square' || p.type === 'landmark'), streets = pool.filter((p) => p.type === 'street');
+      if (places.length && streets.length) pool = rng() < 0.4 ? places : streets;
+      const p = pool[Math.floor(rng() * pool.length)];
+      used.add(p.id);
+      usedNames.add(p.name.ro);
+      const options = kind === 'choose' ? makeOptions(p, style, all, rng) : null;
+      (options || []).forEach((o) => shown.add(o.id));
+      rounds.push({ p, kind, options });
+    }
+    return rounds;
   }
 
   /** Same five for everyone on a given date; avoids what the previous two weeks served. */
-  function dailyPuzzles(all, date) {
-    const base = (d) => pickPuzzles(all, 'daily', mulberry32(seedFrom('melyikutca:' + d)));
+  function dailyRounds(all, date) {
+    const base = (d) => pickRounds(all, 'daily', mulberry32(seedFrom('melyikutca2:' + d)));
     const recent = new Set();
     const day = new Date(date + 'T12:00:00Z');
     for (let i = 1; i <= 14; i++) {
       const d = new Date(day.getTime() - i * 864e5).toISOString().slice(0, 10);
-      base(d).forEach((p) => recent.add(p.id));
+      base(d).forEach((r) => recent.add(r.p.id));
     }
-    return pickPuzzles(all, 'daily', mulberry32(seedFrom('melyikutca:' + date)), recent);
+    return pickRounds(all, 'daily', mulberry32(seedFrom('melyikutca2:' + date)), recent);
   }
 
   // ------------------------------------------------------------------ state
@@ -385,8 +432,8 @@
     diff: store.get('diff', 'medium'),
     data: null,
     mode: null, date: null,
-    puzzles: [], round: 0, results: [],
-    guess: null, hints: 0, revealed: false,
+    rounds: [], round: 0, results: [],
+    guess: null, hints: 0, revealed: false, wrong: 0,
   };
   if (!TIERS.includes(state.diff)) state.diff = 'medium';
   const t = (k, ...a) => { const v = I18N[state.lang][k]; return typeof v === 'function' ? v(...a) : v; };
@@ -396,7 +443,7 @@
     $$('[data-i18n]').forEach((n) => { n.textContent = t(n.dataset.i18n); });
     $$('.lang button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === state.lang)));
     refreshStart();
-    if (screen() === 'game') { updateRoundMeta(); updateHintUI(); if (state.revealed) fillReveal(); setTypeChip(); }
+    if (screen() === 'game') renderRoundText();
     if (screen() === 'end') renderEnd();
   }
 
@@ -472,7 +519,7 @@
     }
     resetView();
     map.on('click', (ev) => {
-      if (state.revealed) return;
+      if (state.revealed || cur().kind === 'choose') return;
       placeGuess([ev.latlng.lat, ev.latlng.lng]);
     });
   }
@@ -550,15 +597,15 @@
   }
 
   // ------------------------------------------------------------------ game flow
+  const cur = () => state.rounds[state.round];
+
   function startGame(mode) {
     const all = state.data.puzzles;
     state.mode = mode;
     state.date = todayStr();
-    if (mode === 'daily') {
-      state.puzzles = dailyPuzzles(all, state.date);
-    } else {
-      state.puzzles = pickPuzzles(all, mode, mulberry32((Math.random() * 2 ** 32) >>> 0));
-    }
+    state.rounds = mode === 'daily'
+      ? dailyRounds(all, state.date)
+      : pickRounds(all, mode, mulberry32((Math.random() * 2 ** 32) >>> 0));
     state.round = 0;
     state.results = [];
     show('game');
@@ -573,42 +620,95 @@
     return t('types')[p.type];
   }
 
-  function setTypeChip() {
-    $('#type-chip').textContent = typeLabel(state.puzzles[state.round]);
-  }
+  const localName = (p) => p.name[state.lang] || p.name.hu || p.name.ro;
+  const otherName = (p) => {
+    const alt = state.lang === 'hu' ? p.name.ro : p.name.hu;
+    return alt && alt !== localName(p) ? alt : '';
+  };
 
   function updateRoundMeta() {
     const total = state.results.reduce((a, r) => a + r.points, 0);
     $('#round-meta').innerHTML = `${t('round', state.round + 1)} · <b>${fmt(total)}</b>`;
   }
 
+  /** Everything in the round that depends on the language. */
+  function renderRoundText() {
+    const { p, kind, options } = cur();
+    $('#type-chip').textContent = typeLabel(p);
+    $('#kind-label').textContent = kind === 'choose' ? t('questions')[p.type] : t('kinds')[kind];
+    $('#prompt-q').textContent = kind === 'choose' ? t('questions')[p.type] : kind === 'locate' ? t('whereIs') : t('shapeQ');
+    $('#prompt-name').textContent = kind === 'locate' ? localName(p) : '';
+    $('#prompt-alt').textContent = kind === 'locate' ? otherName(p) : '';
+    if (options) {
+      $$('#choices .choice').forEach((b, i) => { b.querySelector('span').textContent = optionName(options[i], state.lang); });
+    }
+    updateRoundMeta();
+    updateHintUI();
+    if (state.revealed) fillReveal();
+  }
+
   function startRound() {
-    const p = state.puzzles[state.round];
-    state.guess = null; state.hints = 0; state.revealed = false;
+    const { p, kind, options } = cur();
+    state.guess = null; state.hints = 0; state.revealed = false; state.wrong = 0; state.halved = false;
     const sg = $('#screen-game');
-    sg.classList.remove('placed', 'revealed');
+    sg.dataset.kind = kind;
+    sg.classList.remove('placed', 'revealed', 'shape-shown');
     $('#reveal').hidden = true;
     $('#guess-btn').disabled = true;
     $('#hint-text').textContent = '';
     if (guessMarker) { guessMarker.remove(); guessMarker = null; }
     if (revealLayer) { revealLayer.remove(); revealLayer = null; }
-    map.dragging.enable();
-    setTypeChip();
-    updateRoundMeta();
-    updateHintUI();
+    // Multiple choice: four name buttons.
+    const box = $('#choices');
+    box.innerHTML = '';
+    (options || []).forEach((o, i) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'choice';
+      b.innerHTML = '<span></span>';
+      b.addEventListener('click', () => choose(i));
+      box.appendChild(b);
+    });
+    renderRoundText();
     requestAnimationFrame(() => {
       map.invalidateSize();
-      resetView();
+      if (kind === 'choose') {
+        // Highlight the place in situ; the player can still pan and zoom to get bearings.
+        revealLayer = L.layerGroup().addTo(map);
+        const shape = shapeLayer(p, true).addTo(revealLayer);
+        // Zoomed out enough (≈2.5 km across) to see the river and main roads for bearings.
+        map.fitBounds(shape.getBounds(), { padding: [50, 50], maxZoom: 14.5, animate: false });
+      } else {
+        resetView();
+      }
       drawCurrent(true);
     });
   }
 
+  /** The place drawn on the map: red pencil while asking, ink once revealed. */
+  function shapeLayer(p, asking) {
+    const color = asking ? '#d2452b' : '#1a2233';
+    const g = L.featureGroup();
+    if (p.kind === 'area') {
+      L.polygon(p.geom, { color, weight: asking ? 3 : 2, fillColor: color, fillOpacity: asking ? 0.75 : 0.55, interactive: false }).addTo(g);
+    } else {
+      L.polyline(p.geom, { color: '#f6f2e6', weight: 11, opacity: 0.9, lineCap: 'round', lineJoin: 'round', interactive: false }).addTo(g);
+      L.polyline(p.geom, { color, weight: 6, opacity: 0.95, lineCap: 'round', lineJoin: 'round', interactive: false }).addTo(g);
+    }
+    return g;
+  }
+
   function drawCurrent(animate) {
-    const p = state.puzzles[state.round];
+    const { p, kind } = cur();
     const svg = $('#silhouette');
-    // Buildings are hard to place from the footprint alone: show the streets around
-    // them, except in the hard game.
-    renderSilhouette(svg, p, { animate, top: 22, context: state.mode !== 'hard' });
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    // Shape rounds always show it; name rounds only after the "show shape" hint.
+    if (kind === 'shape') {
+      renderSilhouette(svg, p, { animate, top: 30, context: true });
+    } else if (kind === 'locate' && state.hints >= 2) {
+      const top = $('#prompt').offsetHeight + 40;
+      renderSilhouette(svg, p, { animate, top, context: false, pad: 18 });
+    }
     svg.setAttribute('aria-label', typeLabel(p));
   }
 
@@ -617,33 +717,33 @@
   }
 
   function hintLetter(p) {
-    let n;
-    if (p.type === 'blocks') {
-      const s = p.street || { hu: '', ro: '' };
-      n = state.lang === 'hu' ? (s.hu || s.ro) : (s.ro || s.hu);
-    } else {
-      n = p.name[state.lang] || p.name.hu || p.name.ro;
-    }
-    n = stripPrefix(n || '');
+    const n = stripPrefix(optionName(p, state.lang));
     return n ? n[0].toUpperCase() : '?';
   }
 
+  function hintCosts() {
+    const { kind } = cur();
+    return kind === 'choose' ? [HALVE_COST] : HINT_COST;
+  }
+
   function updateHintUI() {
-    const p = state.puzzles[state.round];
+    const { p, kind } = cur();
+    const costs = hintCosts();
     const btn = $('#hint-btn');
-    if (state.hints >= 2) {
-      btn.innerHTML = `${t('hint')}<small>${t('noMoreHints')}</small>`;
+    const label = kind === 'choose' ? t('halve') : t('hint');
+    if (state.hints >= costs.length) {
+      btn.innerHTML = `${label}<small>${t('noMoreHints')}</small>`;
       btn.disabled = true;
     } else {
-      btn.innerHTML = `${t('hint')}<small>${t('hintCost', HINT_COST[state.hints])}</small>`;
+      btn.innerHTML = `${label}<small>${t('hintCost', costs[state.hints])}</small>`;
       btn.disabled = state.revealed;
     }
     const lines = [];
-    if (state.hints >= 1) {
+    if (kind !== 'choose' && state.hints >= 1) {
       const h = p.hood && (p.hood[state.lang] || p.hood.hu);
       lines.push(h ? t('hood', h) : t('hoodUnknown'));
     }
-    if (state.hints >= 2) lines.push(t('letter', hintLetter(p)));
+    if (kind === 'shape' && state.hints >= 2) lines.push(t('letter', hintLetter(p)));
     $('#hint-text').innerHTML = lines.map((l) => `<div>${escapeHtml(l)}</div>`).join('');
   }
 
@@ -652,38 +752,77 @@
   }
 
   function useHint() {
-    if (state.revealed || state.hints >= 2) return;
+    const { kind, p, options } = cur();
+    if (state.revealed || state.hints >= hintCosts().length) return;
     state.hints++;
+    if (kind === 'choose') {
+      // Take away two wrong answers that are still standing.
+      const buttons = $$('#choices .choice');
+      const wrong = options.map((o, i) => i).filter((i) => options[i] !== p && !buttons[i].disabled);
+      shuffle(wrong, Math.random).slice(0, Math.max(0, wrong.length - 1)).slice(0, 2).forEach((i) => {
+        buttons[i].classList.add('removed');
+        buttons[i].disabled = true;
+      });
+    }
+    if (kind === 'locate' && state.hints >= 2) {
+      $('#screen-game').classList.add('shape-shown');
+      drawCurrent(true);
+      map.invalidateSize(); // the sheet grew, so the map shrank
+    }
     updateHintUI();
+  }
+
+  const penaltyNow = () => hintCosts().slice(0, state.hints).reduce((a, b) => a + b, 0);
+
+  function choose(i) {
+    const { p, options } = cur();
+    if (state.revealed) return;
+    const b = $$('#choices .choice')[i];
+    if (options[i] !== p) {
+      b.classList.add('wrong');
+      b.disabled = true;
+      state.wrong++;
+      // Keep guessing while there is still a choice to make; once only the right
+      // answer is left the round ends, scored by the wrong picks so far.
+      const left = $$('#choices .choice').filter((x) => !x.disabled);
+      if (left.length > 1) return;
+    }
+    $$('#choices .choice').forEach((x, j) => {
+      x.disabled = true;
+      if (options[j] === p) x.classList.add('right');
+    });
+    const base = CHOOSE_POINTS[Math.min(state.wrong, CHOOSE_POINTS.length - 1)];
+    const penalty = base ? penaltyNow() : 0;
+    state.results.push({ id: p.id, kind: 'choose', wrong: state.wrong, base, penalty, points: Math.max(0, base - penalty), hints: state.hints });
+    revealOnMap(null);
   }
 
   function submitGuess() {
     if (!state.guess || state.revealed) return;
-    const p = state.puzzles[state.round];
+    const { p, kind } = cur();
     const { d, nearest } = distanceToShape(state.guess, p);
     const base = scoreForDistance(d);
-    const penalty = HINT_COST.slice(0, state.hints).reduce((a, b) => a + b, 0);
-    const points = Math.max(0, base - penalty);
-    state.results.push({ id: p.id, d, base, penalty, points, hints: state.hints });
+    const penalty = penaltyNow();
+    state.results.push({ id: p.id, kind, d, base, penalty, points: Math.max(0, base - penalty), hints: state.hints });
+    guessMarker.dragging.disable();
+    revealOnMap({ d, nearest });
+  }
+
+  function revealOnMap(miss) {
+    const { p } = cur();
     state.revealed = true;
     $('#screen-game').classList.add('revealed');
-    guessMarker.dragging.disable();
-
-    // Draw the real shape in place, plus the guess→nearest-point line.
+    if (revealLayer) revealLayer.remove();
     revealLayer = L.layerGroup().addTo(map);
-    const ink = '#1a2233', pencil = '#d2452b';
-    let shape;
-    if (p.kind === 'area') {
-      shape = L.polygon(p.geom, { color: ink, weight: 2, fillColor: ink, fillOpacity: 0.55, interactive: false });
-    } else {
-      shape = L.polyline(p.geom, { color: ink, weight: 6, opacity: 0.9, lineCap: 'round', lineJoin: 'round', interactive: false });
+    const shape = shapeLayer(p, false).addTo(revealLayer);
+    let bounds = shape.getBounds();
+    if (miss) {
+      if (miss.d > 0) {
+        L.polyline([state.guess, miss.nearest], { color: '#d2452b', weight: 2.5, dashArray: '6 6', interactive: false }).addTo(revealLayer);
+        L.marker(miss.nearest, { icon: L.divIcon({ className: 'near-dot', iconSize: [0, 0] }), interactive: false }).addTo(revealLayer);
+      }
+      bounds = bounds.extend(state.guess);
     }
-    shape.addTo(revealLayer);
-    if (d > 0) {
-      L.polyline([state.guess, nearest], { color: pencil, weight: 2.5, dashArray: '6 6', interactive: false }).addTo(revealLayer);
-      L.marker(nearest, { icon: L.divIcon({ className: 'near-dot', iconSize: [0, 0] }), interactive: false }).addTo(revealLayer);
-    }
-    const bounds = shape.getBounds().extend(state.guess);
     updateRoundMeta();
     updateHintUI();
     fillReveal();
@@ -693,29 +832,35 @@
       const mapBottom = $('#map').getBoundingClientRect().bottom;
       // The card is still sliding in, so measure where it will rest, not where it is.
       const cardTop = $('#screen-game').getBoundingClientRect().bottom - rh;
-      $('#screen-game').style.setProperty('--rv-lift', `${Math.max(0, mapBottom - cardTop)}px`);
-      map.flyToBounds(bounds, { paddingTopLeft: [40, 40], paddingBottomRight: [40, rh + 24], maxZoom: 17, duration: 0.8 });
+      const lift = Math.max(0, mapBottom - cardTop);
+      $('#screen-game').style.setProperty('--rv-lift', `${lift}px`);
+      map.flyToBounds(bounds, { paddingTopLeft: [40, 40], paddingBottomRight: [40, lift + 24], maxZoom: 16, duration: 0.8 });
     });
   }
 
+  function resultLine(r) {
+    if (r.kind === 'choose') return t('tries')[Math.min(r.wrong, 3)];
+    return r.d === 0 ? t('onShape') : fmtDist(r.d);
+  }
+
   function fillReveal() {
-    const p = state.puzzles[state.round];
+    const { p } = cur();
     const r = state.results[state.round];
     if (!r) return;
-    const main = p.name[state.lang] || p.name.hu;
-    const alt = state.lang === 'hu' ? p.name.ro : p.name.hu;
-    $('#rv-name').textContent = main;
+    $('#rv-name').textContent = localName(p);
     const extra = p.type === 'blocks' && p.count ? ` · ${t('blocksN', p.count)}` : '';
-    $('#rv-alt').textContent = (alt && alt !== main ? alt : '') + extra;
+    $('#rv-alt').textContent = otherName(p) + extra;
     $('#rv-pts').textContent = fmt(r.points);
-    let dist = r.d === 0 ? `<b>${t('onShape')}</b>` : t('distance', fmtDist(r.d));
-    if (r.penalty) dist += `<br>${t('hintPenalty', fmt(r.penalty))}`;
-    $('#rv-dist').innerHTML = dist;
-    $('#next-btn').textContent = state.round + 1 < state.puzzles.length ? t('next') : t('finish');
+    let line;
+    if (r.kind === 'choose') line = `<b>${resultLine(r)}</b>`;
+    else line = r.d === 0 ? `<b>${t('onShape')}</b>` : t('distance', fmtDist(r.d));
+    if (r.penalty) line += `<br>${t('hintPenalty', fmt(r.penalty))}`;
+    $('#rv-dist').innerHTML = line;
+    $('#next-btn').textContent = state.round + 1 < state.rounds.length ? t('next') : t('finish');
   }
 
   function nextRound() {
-    if (state.round + 1 < state.puzzles.length) {
+    if (state.round + 1 < state.rounds.length) {
       state.round++;
       startRound();
     } else {
@@ -754,7 +899,7 @@
     const ol = $('#end-rounds');
     ol.innerHTML = '';
     state.results.forEach((r, i) => {
-      const p = state.puzzles[i];
+      const p = state.rounds[i].p;
       const li = document.createElement('li');
       li.style.animationDelay = `${i * 70}ms`;
       const svg = document.createElementNS(SVGNS, 'svg');
@@ -762,8 +907,8 @@
       renderSilhouette(svg, p, { width: 52, height: 52, pad: 6, scaleBar: false, stroke: 2.5 });
       const mid = document.createElement('div');
       mid.innerHTML = `<div class="er-name"></div><div class="er-sub"></div>`;
-      mid.querySelector('.er-name').textContent = p.name[state.lang] || p.name.hu;
-      mid.querySelector('.er-sub').textContent = `${typeLabel(p)} · ${r.d === 0 ? '0 m' : fmtDist(r.d)}`;
+      mid.querySelector('.er-name').textContent = localName(p);
+      mid.querySelector('.er-sub').textContent = `${t('kinds')[r.kind]} · ${resultLine(r)}`;
       li.appendChild(mid);
       const pts = document.createElement('div');
       pts.className = 'er-pts';
@@ -850,7 +995,7 @@
   }
 
   // Exposed for tests and the curious.
-  window.MelyikUtca = { scoreForDistance, distanceToShape, renderSilhouette, pickPuzzles, dailyPuzzles, mulberry32, seedFrom, state, get map() { return map; } };
+  window.MelyikUtca = { scoreForDistance, distanceToShape, renderSilhouette, pickRounds, dailyRounds, mulberry32, seedFrom, state, get map() { return map; } };
 
   load();
 })();

@@ -95,6 +95,17 @@ out tags center;
 );
 out geom;
 """,
+    # How well known is a street? Bus lines along it, and businesses that give it as their address.
+    "routes": f"""
+[out:json][timeout:120][bbox:{BBOX}];
+relation["route"~"^(bus|trolleybus|minibus)$"];
+out body;
+""",
+    "addresses": f"""
+[out:json][timeout:180][bbox:{BBOX}];
+nwr["addr:street"];
+out tags;
+""",
     # Label-free background map, drawn by the game when no CARTO key is configured.
     "basemap": f"""
 [out:json][timeout:240][bbox:{BBOX}];
@@ -451,14 +462,14 @@ def build_streets(streets_raw, in_city):
             # Length-weighted best road class.
             cls = min(classes, key=lambda c: STREET_CLASSES.get(c, 1))
             all_named.append({"lines": lines, "hu": hu, "ro": ro})
-            if length < 150:
-                rejected["street: shorter than 150 m"] += 1
+            if length < 120:
+                rejected["street: shorter than 120 m"] += 1
                 continue
+            # Only streets with a recognisable outline are used for shape-only rounds;
+            # the name and multiple-choice rounds take any street.
             dev, span = straightness(lines)
             # Long roads need proportionally more bend: a 2 km line with a 30 m hook is still a line.
-            if dev < max(25, 0.06 * span):
-                rejected["street: nearly straight"] += 1
-                continue
+            shape_ok = length >= 150 and dev >= max(25, 0.06 * span)
             cx, cy = centroid_of_lines(lines)
             if not in_city((cx, cy)):
                 rejected["street: outside the city"] += 1
@@ -474,6 +485,8 @@ def build_streets(streets_raw, in_city):
                 "osm": sorted({f"w{el['id']}" for el, _ in group}),
                 "key": f"{name}#{gi}",
                 "cls": cls,
+                "shape_ok": shape_ok,
+                "name_tag": name,
             })
     return puzzles, all_named, rejected
 
@@ -998,26 +1011,56 @@ def main():
     candidates = streets + squares + landmarks + clusters
     roads = road_lines(raw["basemap"])
 
-    # Difficulty: fame (road class / landmark / blocks), centrality, size.
+    # How well known is each place? 0 = nobody, 1 = everybody. Difficulty comes from
+    # this rank, not from the shape: an obscure street is hard however it looks.
+    bus_ways = {m["ref"] for el in raw["routes"]["elements"] for m in el.get("members", [])
+                if m.get("type") == "way"}
+    poi_keys = ("shop", "amenity", "office", "craft", "tourism", "healthcare")
+    pois, addrs = Counter(), Counter()
+    for el in raw["addresses"]["elements"]:
+        t = el.get("tags", {})
+        st = t.get("addr:street")
+        addrs[st] += 1
+        if any(k in t for k in poi_keys):
+            pois[st] += 1
+    road_class = {"trunk": 1.0, "primary": 1.0, "secondary": 0.85, "tertiary": 0.65, "pedestrian": 0.7,
+                  "unclassified": 0.3, "living_street": 0.25, "residential": 0.2}
     for p in candidates:
         c = p.get("c") or shape_centroid(p)
         p["c"] = c
-        central = clamp01(dist(c, (0, 0)) / 4000)
-        if p["kind"] == "line":
-            size = 1 - clamp01(math.log(max(p["length"], 150) / 150) / math.log(4000 / 150))
+        central = 1 - clamp01((dist(c, (0, 0)) - 300) / 2700)
+        if p["type"] in ("street", "square"):
+            nm = p.get("name_tag") or p["ro"]
+            bus = 1.0 if any(int(w[1:]) in bus_ways for w in p["osm"] if w.startswith("w")) else 0.0
+            poi = clamp01(math.log1p(pois[nm]) / math.log1p(40))
+            addr = clamp01(math.log1p(addrs[nm]) / math.log1p(150))
+            length = clamp01(math.log(max(p["length"], 120) / 120) / math.log(3000 / 120))
+            known = (0.25 * road_class.get(p.get("cls"), 0.2) + 0.12 * length + 0.28 * central
+                     + 0.10 * bus + 0.18 * poi + 0.07 * addr)
+            if p["type"] == "square":
+                known = max(known, 0.55 + 0.35 * central)  # squares are landmarks in their own right
+            p["bus"], p["pois"] = bool(bus), pois[nm]
+        elif p["type"] == "landmark":
+            known = 1.0 - 0.5 * p["fame"]  # fame 0 = everybody knows it
         else:
-            size = 1 - clamp01(math.log(max(p["area"], 100) / 100) / math.log(40000 / 100))
-        score = 100 * (0.45 * p["fame"] + 0.30 * central + 0.25 * size)
-        p["score"] = round(score, 1)
-    # Fixed cut-offs (not quantiles) so a famous building stays "easy" however many
-    # obscure streets there are. Score 0..100, higher = harder.
-    q1, q2 = 42, 66
+            known = 0.15  # block clusters: only for shape rounds
+        p["known"] = known
+    # Tiers: streets by rank (the 40 best known are easy, the next 120 medium);
+    # the squares and landmarks that made it this far are all well known.
+    ranked = sorted((p for p in candidates if p["type"] == "street"), key=lambda p: -p["known"])
+    for i, p in enumerate(ranked):
+        p["tier"] = "easy" if i < 40 else ("medium" if i < 160 else "hard")
+    for p in candidates:
+        if p["type"] in ("square", "landmark"):
+            p["tier"] = "easy"
+        elif p["type"] == "blocks":
+            p["tier"] = "hard"
 
     puzzles = []
     type_prefix = {"street": "s", "square": "q", "landmark": "l", "blocks": "b"}
     seen_ids = set()
     for p in candidates:
-        tier = "easy" if p["score"] < q1 else ("medium" if p["score"] < q2 else "hard")
+        tier = p["tier"]
         # Simplify for drawing: tolerance relative to the shape's size.
         xs = [pt[0] for part in p["parts"] for pt in part]
         ys = [pt[1] for part in p["parts"] for pt in part]
@@ -1044,7 +1087,9 @@ def main():
             "name": {"hu": p["hu"] or p["ro"], "ro": p["ro"] or p["hu"]},
             "hood": nb,
             "difficulty": tier,
-            "score": p["score"],
+            "known": round(100 * p["known"]),
+            # Fit for a shape-only round: a distinctive outline of something well known.
+            "shape": bool(p.get("shape_ok", True)),
             "centroid": [round(lat_c, 5), round(lon_c, 5)],
             "bbox": [min(lats), min(lons), max(lats), max(lons)],
             "size": round(p["length"]) if p["kind"] == "line" else round(p["area"]),
@@ -1104,6 +1149,14 @@ def main():
               + f"{sum(table[(ty, t)] for t in tiers):>8}")
     print(f"{'total':<10}" + "".join(f"{sum(table[(ty, t)] for ty in types):>8}" for t in tiers)
           + f"{len(puzzles):>8}")
+    shape_tbl = Counter((p["type"], p["difficulty"]) for p in puzzles if p["shape"])
+    print("of which fit for shape-only rounds: "
+          + ", ".join(f"{ty} {sum(shape_tbl[(ty, t)] for t in tiers)}" for ty in types))
+    print()
+    print("Best known 30:")
+    best = sorted((p for p in puzzles if p["type"] != "blocks"), key=lambda p: -p["known"])[:30]
+    for i in range(0, len(best), 3):
+        print("  " + " · ".join(f"{p['name']['hu']} ({p['known']})" for p in best[i:i + 3]))
     print()
     print("Skipped:")
     for k, v in sorted((rej_s + rej_a).items()):
